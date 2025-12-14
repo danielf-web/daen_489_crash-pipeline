@@ -1,0 +1,38 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# -------------------------
+# Go
+# -------------------------
+bin/
+*.exe
+
+# -------------------------
+# Environment + Secrets
+# -------------------------
+.env
+.env.local
+
+# -------------------------
+# Assignment: DO NOT UPLOAD
+# -------------------------
+backfill.json
+streaming.json
+streamMe.json
+
+minio-data/
+prometheus_data/
+grafana_data/
+duckdb-data/
+
+# -------------------------
+# OS / Editor
+# -------------------------
+.DS_Store
+.vscode/
+.idea/

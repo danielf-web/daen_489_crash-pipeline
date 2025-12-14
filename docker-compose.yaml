@@ -1,0 +1,138 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "${RABBIT_PORT}:5672"     # AMQP
+      - "${RABBIT_UI}:15672"      # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  rabbitmq-exporter:
+    image: kbudde/rabbitmq-exporter:latest
+    container_name: rabbitmq-exporter
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      # exporter reads RabbitMQ management API
+      RABBIT_URL: "http://rabbitmq:15672"
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASS}
+      PUBLISH_PORT: "9419"
+      LOG_LEVEL: "info"
+    ports:
+      - "9419:9419"
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "${MINIO_API_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    volumes:
+      - ./minio-data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASS}
+      # allow Prometheus to scrape MinIO without auth
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  extractor:
+    build: ./extractor
+    container_name: extractor
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    # Prometheus scrapes http://extractor:2112/metrics (after we add it in main.go)
+    environment:
+      METRICS_PORT: "2112"
+    expose:
+      - "2112"
+    restart: unless-stopped
+
+  transformer:
+    build: ./transformer
+    container_name: transformer
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    # Prometheus scrapes http://transformer:8000/metrics (after we add it in transformer.py)
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  cleaner:
+    build: ./cleaner
+    container_name: cleaner
+    env_file: .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    # Prometheus scrapes http://cleaner:8000/metrics (after we add it in cleaner.py)
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    depends_on:
+      - rabbitmq-exporter
+      - minio
+      - extractor
+      - transformer
+      - cleaner
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

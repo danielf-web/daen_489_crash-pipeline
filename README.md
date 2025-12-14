@@ -1,0 +1,93 @@
+# Chicago Crash ETL Pipeline + ML Dashboard
+
+This project builds an end-to-end data pipeline for Chicago traffic crash data and turns it into something you can actually explore, monitor, and model. The pipeline pulls raw crash data (plus optional vehicle + people enrichment), stores it in MinIO, transforms it into clean “Silver” CSVs, and then writes a final “Gold” dataset into DuckDB. On top of that, a Streamlit dashboard lets you explore the data (EDA), run predictions, and view pipeline health and metrics in Grafana/Prometheus.
+
+---
+
+## 1) What problem this pipeline solves
+
+Chicago crash data is useful, but it’s messy and not “analysis ready” out of the box. This pipeline solves that by:
+- Automatically pulling crash + enrichment data from the City of Chicago Open Data APIs (Socrata).
+- Turning raw records into a structured dataset that’s consistent and easier to analyze.
+- Persisting a clean final dataset (DuckDB Gold) so you can query it fast without reprocessing everything.
+- Adding an ML model to predict whether a crash is likely a hit-and-run (`hit_and_run_i`).
+- Monitoring everything with Prometheus metrics and Grafana dashboards so you can prove it is running correctly.
+
+---
+
+## 2) How data moves through the system
+
+1. **Extractor (Go)** pulls raw crash (and optionally vehicle/people) records from the Chicago Open Data APIs and saves them into **MinIO** in a raw format.
+2. **Transformer (Python)** reads raw objects from MinIO, merges and reshapes them into **Silver CSVs** (cleaner, standardized intermediate output).
+3. **Cleaner (Python)** applies final cleaning rules and writes the final tables into **DuckDB (Gold)**.
+4. **Streamlit app** reads from DuckDB Gold, runs EDA charts, and uses the trained ML model to produce predictions.
+5. **Monitoring** exposes metrics (pipeline + ML + DuckDB stats) to **Prometheus**, and Grafana visualizes them.
+
+---
+
+## 3) What the ML model predicts
+
+The ML label is **`hit_and_run_i`**:
+- `1` = hit-and-run
+- `0` = not hit-and-run
+
+The dashboard loads the trained model artifact (a saved sklearn pipeline) and predicts the probability of hit-and-run using crash context features (time of day, day of week, speed limit, weather, traffic control devices, and other engineered fields depending on the trained pipeline). It supports scoring either:
+- Data loaded directly from `gold.crashes`, or
+- A held-out CSV you upload into the dashboard.
+
+---
+
+## 4) What the Streamlit dashboard can do
+
+The Streamlit UI is designed to be the “control center”:
+- **Home**: label overview + container/service health checks  
+- **Data Management**: MinIO cleanup (by prefix or bucket), DuckDB table counts, and quick table previews  
+- **Data Fetcher**: publish streaming/backfill jobs (with optional vehicle/people enrichment)  
+- **Scheduler**: create automated schedules (cron style) for recurring runs  
+- **EDA**: run charts and summary stats directly off DuckDB Gold tables  
+- **Model**: load model artifact, score data, show live metrics if labels exist, and export scored CSV  
+- **Reports**: show recent run history and a snapshot of Gold tables
+
+---
+
+## 5) Pipeline components
+
+### Extractor (Go)
+The extractor’s job is to pull raw crash data from the Chicago Open Data APIs and store it in MinIO so the rest of the pipeline can work off a stable raw layer. It supports pulling crash records and can optionally enrich the run by also fetching vehicles and people records. The output is stored in MinIO under organized prefixes so each run can be tracked (often using a correlation id).
+
+### Transformer (Python)
+The transformer reads the raw MinIO objects and converts them into a cleaner intermediate format (Silver). This step is where merging happens (crashes + optional vehicles/people) and where the data becomes a consistent “table-like” dataset. The output is written as Silver CSV files to keep the pipeline transparent and easy to debug.
+
+### Cleaner (Python)
+The cleaner takes the Silver CSVs and applies final cleaning rules (type fixes, missing values, standardization, and any domain-specific cleanup). This step writes the final results into DuckDB as the Gold layer (example table: `gold.crashes`). Gold is what the dashboard and ML model use, because it’s the most reliable and query-friendly output.
+
+### DuckDB Gold
+DuckDB is the final storage system for cleaned tables. The Gold layer lets you run fast SQL queries and is perfect for dashboards because it stays local and is lightweight. The main table used in the dashboard is `gold.crashes`.
+
+### Streamlit App
+The Streamlit app is the UI for exploring the data and proving the pipeline works end-to-end. It provides EDA charts, table previews, model scoring, and downloadable outputs. It also exposes and updates some metrics (like DuckDB file size and Gold row counts) so the monitoring stack can visualize them.
+
+### Docker Compose
+Docker Compose is used to launch the full system consistently. It brings up MinIO, Prometheus, Grafana, and the Streamlit dashboard in one command so you do not have to manually manage each service. This makes the project easy to run locally or on a VM.
+
+### Monitoring (Prometheus + Grafana)
+Each service exposes custom Prometheus metrics, and Prometheus scrapes them on a schedule. Grafana reads from Prometheus and displays dashboards for pipeline health, throughput, and ML metrics. This is how you can prove the system is actually running and producing real output.
+
+---
+
+## 6) Architecture Diagram
+
+```mermaid
+flowchart LR
+  A[Extractor (Go)\nFetch raw crash + optional vehicles/people] --> B[MinIO\nRaw storage]
+  B --> C[Transformer (Python)\nMerge + Silver CSVs]
+  C --> D[Cleaner (Python)\nFinal cleaning rules]
+  D --> E[DuckDB\nGold tables]
+  E --> F[Streamlit Dashboard\nEDA + ML predictions]
+
+  A --> M[Custom Metrics]
+  C --> M
+  D --> M
+  F --> M
+  M --> P[Prometheus]
+  P --> G[Grafana]

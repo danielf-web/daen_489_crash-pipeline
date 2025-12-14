@@ -1,0 +1,109 @@
+{
+  "steps": [],
+  "rows_initial": 1596,
+  "cols_initial": 57,
+  "dedupe": {
+    "key": "crash_record_id",
+    "rows_removed": 0
+  },
+  "dropped_columns": [
+    "crash_record_id",
+    "date_police_notified",
+    "location_json",
+    "photos_taken_i",
+    "ppl_person_id_list_json",
+    "report_type",
+    "statements_taken_i",
+    "street_name"
+  ],
+  "boolean_standardized": [
+    {
+      "column": "hit_and_run_i",
+      "nulls_before": 1089,
+      "nulls_after": 1089
+    },
+    {
+      "column": "crash_date_est_i",
+      "nulls_before": 1507,
+      "nulls_after": 1507
+    },
+    {
+      "column": "intersection_related_i",
+      "nulls_before": 1258,
+      "nulls_after": 1258
+    },
+    {
+      "column": "work_zone_i",
+      "nulls_before": 1591,
+      "nulls_after": 1591
+    },
+    {
+      "column": "dooring_i",
+      "nulls_before": 1589,
+      "nulls_after": 1589
+    },
+    {
+      "column": "private_property_i",
+      "nulls_before": 1528,
+      "nulls_after": 1528
+    }
+  ],
+  "time_features_added": [
+    "year",
+    "month",
+    "day",
+    "hour",
+    "is_weekend",
+    "hour_bin",
+    "crash_day_of_week*",
+    "crash_month*"
+  ],
+  "location_rows_dropped_invalid_coords": 14,
+  "location_features_added": [
+    "lat_bin",
+    "lng_bin",
+    "grid_id",
+    "beat_of_occurrence*"
+  ],
+  "road_env_cleaned": true,
+  "veh_people_features": [
+    "veh_count",
+    "veh_truck_i",
+    "veh_mc_i",
+    "ppl_count",
+    "ppl_age_mean",
+    "ppl_age_min",
+    "ppl_age_max"
+  ],
+  "cause_grouped_from": "prim_contributory_cause",
+  "missing_outliers_handled": true,
+  "target_col": "hit_and_run_i",
+  "target_type": "binary",
+  "target_sources_for_leakage_drop": [],
+  "dropped_target_sources": [],
+  "target_nulls_dropped": {
+    "column": "hit_and_run_i",
+    "rows_dropped": 1077,
+    "pct": 68.08
+  },
+  "target_distribution": {
+    "counts": {
+      "1.0": 484,
+      "0.0": 21
+    },
+    "perc": {
+      "1.0": 95.84,
+      "0.0": 4.16
+    }
+  },
+  "cleaned_csv": "out/cleaned.csv",
+  "splits": {
+    "train_rows": 353,
+    "valid_rows": 51,
+    "test_rows": 101,
+    "stratified": true
+  },
+  "ml_ready_csv": "out/ml_ready.csv",
+  "rows_final": 505,
+  "cols_final": 64
+}

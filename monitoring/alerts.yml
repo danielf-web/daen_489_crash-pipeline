@@ -1,0 +1,48 @@
+groups:
+  - name: core-alerts
+    rules:
+      - alert: RabbitMQExporterDown
+        expr: up{job="rabbitmq-exporter"} == 0
+
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RabbitMQ exporter is down"
+          description: "Prometheus cannot scrape rabbitmq-exporter for 1 minute."
+
+      - alert: MinioDown
+        expr: up{job="minio"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MinIO metrics endpoint is down"
+          description: "Prometheus cannot scrape MinIO for 1 minute."
+
+      - alert: ExtractorDown
+        expr: up{job="extractor"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Extractor metrics endpoint is down"
+          description: "Prometheus cannot scrape extractor metrics for 2 minutes."
+
+      - alert: TransformerDown
+        expr: up{job="transformer"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Transformer metrics endpoint is down"
+          description: "Prometheus cannot scrape transformer metrics for 2 minutes."
+
+      - alert: CleanerDown
+        expr: up{job="cleaner"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cleaner metrics endpoint is down"
+          description: "Prometheus cannot scrape cleaner metrics for 2 minutes."
