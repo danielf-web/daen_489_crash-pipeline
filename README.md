@@ -79,15 +79,17 @@ Each service exposes custom Prometheus metrics, and Prometheus scrapes them on a
 
 ```mermaid
 flowchart LR
-  A[Extractor (Go)\nFetch raw crash + optional vehicles/people] --> B[MinIO\nRaw storage]
-  B --> C[Transformer (Python)\nMerge + Silver CSVs]
-  C --> D[Cleaner (Python)\nFinal cleaning rules]
-  D --> E[DuckDB\nGold tables]
-  E --> F[Streamlit Dashboard\nEDA + ML predictions]
+  A[Extractor (Go)<br/>Fetch raw crash + optional vehicles/people] --> B[MinIO<br/>Raw JSON]
+  B --> C[Transformer (Python)<br/>Merge + Silver CSVs]
+  C --> D[Cleaner (Python)<br/>Final cleaning rules]
+  D --> E[DuckDB<br/>Gold tables]
+  E --> F[Streamlit Dashboard<br/>EDA + ML predictions]
 
   A --> M[Custom Metrics]
   C --> M
   D --> M
   F --> M
+
   M --> P[Prometheus]
   P --> G[Grafana]
+
