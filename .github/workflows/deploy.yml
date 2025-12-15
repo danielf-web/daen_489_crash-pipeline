@@ -19,8 +19,8 @@ jobs:
       - name: Write SSH private key
         run: |
           cat > key.pem <<'EOF'
-${{ secrets.AZURE_SSH_KEY }}
-EOF
+          ${{ secrets.AZURE_SSH_KEY }}
+          EOF
           chmod 600 key.pem
 
       - name: Add VM to known_hosts
