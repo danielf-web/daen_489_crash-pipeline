@@ -93,3 +93,58 @@ flowchart LR
   M --> P[Prometheus]
   P --> G[Grafana]
 
+## 7) Azure Deployment Notes (What’s different from local)
+
+### Short summary of my Azure setup
+
+This pipeline was deployed on an Azure Linux VM and️ and run using Docker Compose (MinIO + RabbitMQ + Extractor + Transformer + Cleaner + Prometheus + Grafana + Streamlit). Streamlit was used to publish runs, verify MinIO outputs, confirm DuckDB Gold row counts, and validate that the ML model loads in the dashboard.
+
+### VM configuration
+
+* VM OS: Ubuntu (Linux)
+* Runtime: Docker Engine + Docker Compose
+* Repo path on VM: `~/daen_489_crash-pipeline/`
+* Key services: MinIO, RabbitMQ, Prometheus, Grafana, Streamlit, extractor/transformer/cleaner workers
+
+### Ports opened
+
+Open the ports you used in your Azure NSG (typical for this stack):
+
+* 22: SSH
+* 8501: Streamlit
+* 3000: Grafana
+* 9090: Prometheus
+* 9000: MinIO API
+* 9001: MinIO console
+* 15672: RabbitMQ UI (optional)
+* 2112: Extractor metrics scrape (optional)
+* 8003: Streamlit metrics scrape (optional)
+
+### Folder structure (VM)
+
+```bash
+daen_489_crash-pipeline/
+├─ app.py
+├─ docker-compose.yml
+├─ extractor/
+├─ transformer/
+├─ cleaner/
+│  ├─ gold.duckdb
+├─ artifacts/
+│  ├─ model.pkl
+│  ├─ threshold.txt
+│  ├─ test_metrics.json
+├─ prometheus/
+├─ grafana/
+├─ out/
+└─ README.md
+```
+
+### Differences from local
+
+Local and Azure used the same codebase, but the VM setup surfaced a few differences:
+
+* DuckDB table referencing needed fully-qualified identifiers in the Streamlit app so the Gold row count metric was correct (example: `"gold"."gold"."crashes"`).
+* Cleaner upserts required a UNIQUE index on `crash_record_id` so `ON CONFLICT` worked.
+* The ML model artifact initially failed to load on Azure due to scikit-learn version mismatch; aligning sklearn versions fixed it.
+
