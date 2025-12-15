@@ -13,13 +13,14 @@ jobs:
     env:
       AZURE_HOST: ${{ secrets.AZURE_HOST }}
       AZURE_USER: ${{ secrets.AZURE_USER }}
-      AZURE_SSH_KEY: ${{ secrets.AZURE_SSH_KEY }}
       PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
 
     steps:
-      - name: Set up SSH key
+      - name: Write SSH private key
         run: |
-          echo "$AZURE_SSH_KEY" > key.pem
+          cat > key.pem <<'EOF'
+${{ secrets.AZURE_SSH_KEY }}
+EOF
           chmod 600 key.pem
 
       - name: Add VM to known_hosts
@@ -34,10 +35,13 @@ jobs:
 
       - name: SSH deploy (git pull + docker compose up)
         run: |
-          ssh -i key.pem "$AZURE_USER@$AZURE_HOST" "
-            set -e
-            cd \"$PROJECT_PATH\"
-            git pull
-            docker compose up -d --build
-            docker compose ps
-          "
+          ssh -i key.pem \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$AZURE_USER@$AZURE_HOST" "
+              set -e
+              cd \"$PROJECT_PATH\"
+              git pull
+              docker compose up -d --build
+              docker compose ps
+            "
