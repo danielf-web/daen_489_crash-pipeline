@@ -18,9 +18,12 @@ jobs:
     steps:
       - name: Write SSH private key
         run: |
+          set -e
           cat > key.pem <<'EOF'
           ${{ secrets.AZURE_SSH_KEY }}
           EOF
+          # prevent CRLF issues
+          sed -i 's/\r$//' key.pem
           chmod 600 key.pem
 
       - name: Add VM to known_hosts
@@ -35,13 +38,30 @@ jobs:
 
       - name: SSH deploy (git pull + docker compose up)
         run: |
-          ssh -i key.pem \
-            -o BatchMode=yes \
-            -o StrictHostKeyChecking=yes \
-            "$AZURE_USER@$AZURE_HOST" "
-              set -e
-              cd \"$PROJECT_PATH\"
-              git pull
-              docker compose up -d --build
-              docker compose ps
-            "
+          ssh -i key.pem "$AZURE_USER@$AZURE_HOST" "
+            set -e
+            cd \"$PROJECT_PATH\"
+            git pull
+            docker compose up -d --build
+            docker compose ps
+          "
+
+      - name: Smoke test – HTTP health checks
+        run: |
+          ssh -i key.pem "$AZURE_USER@$AZURE_HOST" '
+            set -e
+
+            echo "🔍 Checking Streamlit..."
+            curl -fsS http://localhost:8501 >/dev/null
+            echo "✅ Streamlit OK"
+
+            echo "🔍 Checking MinIO readiness..."
+            curl -fsS http://localhost:9000/minio/health/ready >/dev/null
+            echo "✅ MinIO OK"
+
+            echo "🔍 Checking Cleaner metrics..."
+            curl -fsS http://localhost:8003/metrics | head -n 5
+            echo "✅ Cleaner metrics OK"
+
+            echo "✅ All smoke tests passed."
+          '
