@@ -1,0 +1,43 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Pipeline to Azure
+    runs-on: ubuntu-latest
+
+    env:
+      AZURE_HOST: ${{ secrets.AZURE_HOST }}
+      AZURE_USER: ${{ secrets.AZURE_USER }}
+      AZURE_SSH_KEY: ${{ secrets.AZURE_SSH_KEY }}
+      PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
+
+    steps:
+      - name: Set up SSH key
+        run: |
+          echo "$AZURE_SSH_KEY" > key.pem
+          chmod 600 key.pem
+
+      - name: Add VM to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$AZURE_HOST" >> ~/.ssh/known_hosts
+
+      - name: Debug connection info (no secrets)
+        run: |
+          echo "Will try to connect to $AZURE_USER@$AZURE_HOST"
+          echo "Project path on VM: $PROJECT_PATH"
+
+      - name: SSH deploy (git pull + docker compose up)
+        run: |
+          ssh -i key.pem "$AZURE_USER@$AZURE_HOST" "
+            set -e
+            cd \"$PROJECT_PATH\"
+            git pull
+            docker compose up -d --build
+            docker compose ps
+          "
