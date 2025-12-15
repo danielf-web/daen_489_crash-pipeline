@@ -4,7 +4,7 @@ This project builds an end-to-end data pipeline for Chicago traffic crash data a
 
 ---
 
-## 1) What problem this pipeline solves
+## 1) What problem this pipeline solves!
 
 Chicago crash data is useful, but it’s messy and not “analysis ready” out of the box. This pipeline solves that by:
 - Automatically pulling crash + enrichment data from the City of Chicago Open Data APIs (Socrata).
